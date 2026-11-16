@@ -21,7 +21,7 @@ For each event it decides who to tell. That is the assigned agent. If the ticket
 
 It then sends a small message to a delivery service. The delivery service passes it to Apple, and Apple shows the notification on the agent's device. Apple only accepts notifications from an app's publisher, which is why a delivery service is needed.
 
-Agents register their device from the app after signing in. For each device the plugin stores the agent's id and Apple's notification address for that device (the device token). These are kept in one extra database table, `<prefix>cleardesk_device`, where `<prefix>` is your osTicket table prefix (usually `ost_`).
+Agents register their device from the app after signing in. For each device the plugin stores the agent's id, Apple's notification address for that device (the device token), and which kinds of event the agent wants there. These are kept in one extra database table, `<prefix>cleardesk_device`, where `<prefix>` is your osTicket table prefix (usually `ost_`).
 
 ## What leaves the helpdesk
 
@@ -67,6 +67,8 @@ The instance has these settings:
 - **Customer replies.** On by default.
 - **Assignments.** On by default.
 - **Internal notes.** Off by default.
+
+These switches apply to the whole helpdesk. Each agent can also choose, in the app, which of the allowed kinds they want on each of their devices; that choice is stored with the device registration.
 
 An administrator can turn everything off at any time by disabling the plugin. The app carries on working without notifications.
 

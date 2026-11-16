@@ -65,6 +65,7 @@ class ClearDeskDevices {
             `staff_id` int(11) unsigned NOT NULL,
             `token` varchar(200) NOT NULL,
             `environment` varchar(16) NOT NULL DEFAULT \'production\',
+            `events` varchar(64) NOT NULL DEFAULT \'new,reply,assigned\',
             `created` datetime NOT NULL,
             `updated` datetime NOT NULL,
             PRIMARY KEY (`id`),
@@ -78,14 +79,26 @@ class ClearDeskDevices {
         return is_string($token) && preg_match('/^[0-9a-fA-F]{64,200}$/', $token);
     }
 
-    /** A device belongs to whoever registered it last. */
-    static function save($staffId, $token, $environment) {
+    const EVENTS = 'new,reply,assigned,note';
+    const DEFAULT_EVENTS = 'new,reply,assigned';
+
+    /** The agent's own choice of events for a device, as a clean comma list; null if not given. */
+    static function cleanEvents($text) {
+        if (!is_string($text))
+            return null;
+        return implode(',', array_values(array_intersect(explode(',', self::EVENTS), array_map('trim', explode(',', $text)))));
+    }
+
+    /** A device belongs to whoever registered it last. `$events` is the agent's choice for this device. */
+    static function save($staffId, $token, $environment, $events = null) {
         self::ensureTable();
         $environment = $environment === 'sandbox' ? 'sandbox' : 'production';
+        if ($events === null)
+            $events = self::DEFAULT_EVENTS;
         return db_query('INSERT INTO `' . CLEARDESK_DEVICE_TABLE . '` SET staff_id=' . db_input((int) $staffId)
             . ', token=' . db_input(strtolower($token)) . ', environment=' . db_input($environment)
-            . ', created=NOW(), updated=NOW()'
-            . ' ON DUPLICATE KEY UPDATE staff_id=VALUES(staff_id), environment=VALUES(environment), updated=NOW()');
+            . ', events=' . db_input($events) . ', created=NOW(), updated=NOW()'
+            . ' ON DUPLICATE KEY UPDATE staff_id=VALUES(staff_id), environment=VALUES(environment), events=VALUES(events), updated=NOW()');
     }
 
     static function remove($token) {
@@ -93,13 +106,16 @@ class ClearDeskDevices {
         return db_query('DELETE FROM `' . CLEARDESK_DEVICE_TABLE . '` WHERE token=' . db_input(strtolower($token)));
     }
 
-    /** staff id => list of array(token, env) */
-    static function byStaff() {
+    /** staff id => list of array(token, env), for the devices that want this kind of event */
+    static function byStaff($event = null) {
         self::ensureTable();
         $out = array();
-        $res = db_query('SELECT staff_id, token, environment FROM `' . CLEARDESK_DEVICE_TABLE . '`');
-        while ($res && ($row = db_fetch_array($res)))
+        $res = db_query('SELECT staff_id, token, environment, events FROM `' . CLEARDESK_DEVICE_TABLE . '`');
+        while ($res && ($row = db_fetch_array($res))) {
+            if ($event !== null && !in_array($event, explode(',', $row['events'])))
+                continue;
             $out[(int) $row['staff_id']][] = array('token' => $row['token'], 'env' => $row['environment']);
+        }
         return $out;
     }
 }
@@ -131,9 +147,12 @@ class ClearDeskDeviceAPI {
         if (!ClearDeskDevices::validToken($token))
             return $this->reply(400, array('error' => 'Invalid device token'));
         $environment = isset($_POST['environment']) ? $_POST['environment'] : 'production';
-        if (!ClearDeskDevices::save($thisstaff->getId(), $token, $environment))
+        // Which kinds of event this agent wants on this device, e.g. "new,reply". Left out: the usual three.
+        $events = ClearDeskDevices::cleanEvents(isset($_POST['events']) ? $_POST['events'] : null);
+        if (!ClearDeskDevices::save($thisstaff->getId(), $token, $environment, $events))
             return $this->reply(500, array('error' => 'Could not save the device'));
-        $this->reply(200, array('registered' => true));
+        $this->reply(200, array('registered' => true,
+            'events' => $events === null ? ClearDeskDevices::DEFAULT_EVENTS : $events));
     }
 
     function remove() {
@@ -237,7 +256,7 @@ class ClearDeskNotifier {
             return;
 
         $devices = array();
-        $registered = ClearDeskDevices::byStaff();
+        $registered = ClearDeskDevices::byStaff($event);
         foreach (array_unique(array_map('intval', $staffIds)) as $staffId) {
             // Whoever did it does not need telling.
             if ($thisstaff && $thisstaff->getId() == $staffId)
