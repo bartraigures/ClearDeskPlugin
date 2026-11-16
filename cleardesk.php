@@ -33,10 +33,10 @@ class ClearDeskPlugin extends Plugin {
         $config = $this->getConfig();
         ClearDeskNotifier::configure(array(
             'relay_url' => trim((string) $config->get('relay_url')),
-            'new' => (bool) $config->get('notify_new'),
-            'reply' => (bool) $config->get('notify_reply'),
-            'assigned' => (bool) $config->get('notify_assigned'),
-            'note' => (bool) $config->get('notify_note'),
+            'new' => $config->isOn('notify_new'),
+            'reply' => $config->isOn('notify_reply'),
+            'assigned' => $config->isOn('notify_assigned'),
+            'note' => $config->isOn('notify_note'),
         ));
 
         Signal::connect('ticket.created', array('ClearDeskNotifier', 'onTicketCreated'));

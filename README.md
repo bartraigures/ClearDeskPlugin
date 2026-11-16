@@ -45,7 +45,7 @@ What the delivery service and Apple can still infer: that a helpdesk at the send
 
 ## Requirements
 
-- Self-hosted osTicket 1.17 or 1.18.
+- Self-hosted osTicket 1.17 or 1.18. Checked on 1.17, 1.18.2 and 1.18.4.
 - PHP with the curl extension.
 - Outbound HTTPS from the server to the delivery service.
 
@@ -53,17 +53,22 @@ Hosted (SupportSystem) installs cannot add plugins and are not supported.
 
 ## Installing
 
+Step-by-step instructions with every screen: https://bartraigures.github.io/ClearDesk-app/notifications.html
+
+In short:
+
 1. Copy this folder to `include/plugins/cleardesk` on the osTicket server.
 2. In the Admin Panel, go to Manage → Plugins → Add New Plugin, and install "Clear Desk notifications".
-3. Open the plugin and add an instance. Set the instance to Enabled and the plugin to Active.
-4. Each agent then signs in to the Clear Desk app and switches notifications on in Settings.
+3. On the page that opens, set **Status** to **Active** and press **Save Changes**.
+4. Open the **Instances** tab, press **Add New Instance**, give it a name (for example "Clear Desk"), set **Status** to **Enabled** and press **Add Instance**. The **Config** tab holds the settings below; the defaults are fine.
+5. Each agent then signs in to the Clear Desk app and switches notifications on in Settings.
 
 ## Settings
 
 The instance has these settings:
 
 - **Delivery service address.** Where messages are sent. Leave it as it is unless you run your own delivery service.
-- **New tickets.** On by default.
+- **New tickets.** On or Off. On by default.
 - **Customer replies.** On by default.
 - **Assignments.** On by default.
 - **Internal notes.** Off by default.
